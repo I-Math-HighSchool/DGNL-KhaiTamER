@@ -26,4 +26,5 @@ window.DGNL_ALLOWED_EMAILS = [
     "kevin2009.mn@gmail.com",
     "uyenxuantruong63@gmail.com",
     "hoatrinhbbc@gmail.com",
+    "thuthuy611103@gmail.com",
 ];
