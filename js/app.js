@@ -210,7 +210,13 @@ function renderExam() {
         if (group.noiDungChung) {
             const ctx = document.createElement('div');
             ctx.className = 'shared-context';
-            ctx.innerHTML = group.noiDungChung;
+            const nhan = document.createElement('div');
+            nhan.className = 'shared-context-label';
+            nhan.innerHTML = `<i class="fa-solid fa-link"></i> Dữ kiện dùng chung cho ${group.cauHoi.length} câu`;
+            ctx.appendChild(nhan);
+            const noiDung = document.createElement('div');
+            noiDung.innerHTML = group.noiDungChung;
+            ctx.appendChild(noiDung);
             groupDiv.appendChild(ctx);
         }
 
