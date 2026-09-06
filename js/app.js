@@ -34,6 +34,15 @@ async function napToanBoDuLieu() {
     document.getElementById('btn-generate').disabled = false;
 }
 
+// Đếm tổng số câu hỏi thực tế trong 1 mảng "nhóm" (mỗi nhóm có thể chứa
+// nhiều câu con dùng chung ngữ cảnh, xem soCauTrongNhom()).
+function soCauTrongNhom(nhom) {
+    return (nhom.cauHoi && nhom.cauHoi.length) || 0;
+}
+function demTongCau(danhSachNhom) {
+    return danhSachNhom.reduce((t, nhom) => t + soCauTrongNhom(nhom), 0);
+}
+
 function populateDropdown() {
     const sel = document.getElementById('select-chuyen-de');
     sel.innerHTML = '';
@@ -46,7 +55,7 @@ function populateDropdown() {
         const arr = (window.DGNL_CHUYEN_DE && window.DGNL_CHUYEN_DE[m.id]) || [];
         const opt = document.createElement('option');
         opt.value = m.id;
-        opt.textContent = `${m.ten} (${arr.length} câu)`;
+        opt.textContent = `${m.ten} (${demTongCau(arr)} câu)`;
         sel.appendChild(opt);
     });
 }
@@ -78,28 +87,43 @@ function taoNguonCauHoi(chuyenDeId) {
 function taoDe() {
     const chuyenDeId = document.getElementById('select-chuyen-de').value;
     const chuyenDeTen = document.getElementById('select-chuyen-de').selectedOptions[0].textContent;
-    let soCau = parseInt(document.getElementById('input-so-cau').value, 10) || 20;
+    let soCauMongMuon = parseInt(document.getElementById('input-so-cau').value, 10) || 20;
 
+    // pool: mảng các "nhóm" — mỗi nhóm có thể là 1 câu độc lập (cauHoi có
+    // đúng 1 phần tử) hoặc 1 CỤM nhiều câu dùng chung ngữ cảnh (cauHoi có
+    // 2-5 phần tử, ví dụ các câu hỏi cùng dựa trên 1 hình vẽ/1 dãy số).
     const pool = taoNguonCauHoi(chuyenDeId);
-    if (pool.length === 0) {
+    const tongCauCoSan = demTongCau(pool);
+    if (tongCauCoSan === 0) {
         alert('Chuyên đề này chưa có câu hỏi nào.');
         return;
     }
-    soCau = Math.min(soCau, pool.length);
-    const chosen = shuffleArray(pool).slice(0, soCau);
+    soCauMongMuon = Math.min(soCauMongMuon, tongCauCoSan);
 
-    // Mỗi câu hỏi độc lập được coi là 1 "bộ" chỉ có 1 câu con, để dùng
-    // chung 1 cơ chế hiển thị/chấm điểm với các đề có nhiều câu con dùng
-    // chung 1 đoạn nội dung (noiDungChung).
-    const groups = chosen.map(q => {
-        // xáo trộn thứ tự 4 đáp án nhưng vẫn theo dõi đúng đáp án đúng
-        const order = shuffleArray([0, 1, 2, 3]);
-        const choices = order.map(i => q.choices[i]);
-        const correctIndex = order.indexOf(q.correctIndex);
-        return {
-            noiDungChung: q.noiDungChung || null,
-            cauHoi: [{ question: q.question, choices, correctIndex, explain: q.explain }]
-        };
+    // Chọn NGUYÊN CẢ CỤM — KHÔNG BAO GIỜ tách rời các câu dùng chung ngữ
+    // cảnh ra khỏi nhau (câu sau có thể phụ thuộc kết quả câu trước), nên
+    // số câu thực tế có thể nhỉnh hơn 1 chút so với số câu bạn nhập nếu
+    // cụm cuối cùng được chọn có nhiều hơn 1 câu.
+    const nhomXaoTron = shuffleArray(pool);
+    const nhomDaChon = [];
+    let tongDaChon = 0;
+    for (const nhom of nhomXaoTron) {
+        if (tongDaChon >= soCauMongMuon) break;
+        nhomDaChon.push(nhom);
+        tongDaChon += soCauTrongNhom(nhom);
+    }
+
+    const groups = nhomDaChon.map(nhom => {
+        // Giữ nguyên THỨ TỰ các câu con trong 1 cụm (câu sau có thể tham
+        // chiếu kết quả câu trước) — chỉ xáo trộn thứ tự 4 đáp án của
+        // riêng từng câu, vẫn theo dõi đúng đáp án đúng.
+        const cauHoi = nhom.cauHoi.map(q => {
+            const order = shuffleArray([0, 1, 2, 3]);
+            const choices = order.map(i => q.choices[i]);
+            const correctIndex = order.indexOf(q.correctIndex);
+            return { question: q.question, choices, correctIndex, explain: q.explain };
+        });
+        return { noiDungChung: nhom.noiDungChung || null, cauHoi };
     });
 
     const enableTimer = document.getElementById('check-timer').checked;
@@ -143,16 +167,28 @@ function renderExam() {
             groupDiv.appendChild(ctx);
         }
 
+        // Nếu 1 cụm có nhiều hơn 1 câu con dùng chung ngữ cảnh, gói các ô
+        // "tiến độ" của cụm đó lại với nhau (viền riêng) để học sinh nhận
+        // ra ngay các câu này liên quan đến nhau, dễ quan sát hơn.
+        const isMultiGroup = group.cauHoi.length > 1;
+        let progressGroupWrap = null;
+        if (isMultiGroup) {
+            progressGroupWrap = document.createElement('div');
+            progressGroupWrap.className = 'progress-cum-wrap';
+            progressGroupWrap.title = `Cụm ${group.cauHoi.length} câu dùng chung dữ kiện`;
+        }
+
         group.cauHoi.forEach((q, cIdx) => {
             qNo++;
             const globalNo = qNo;
             const qDiv = document.createElement('div');
-            qDiv.className = 'question-item';
+            qDiv.className = isMultiGroup ? 'question-item question-item-cum' : 'question-item';
             qDiv.id = 'question-' + globalNo;
 
             const qText = document.createElement('div');
             qText.className = 'question-text';
-            qText.innerHTML = `<span class="text-primary">Câu ${globalNo}:</span> ${q.question}`;
+            const nhanCum = isMultiGroup ? ' <span class="badge-cum">cụm ' + group.cauHoi.length + ' câu</span>' : '';
+            qText.innerHTML = `<span class="text-primary">Câu ${globalNo}:</span>${nhanCum} ${q.question}`;
             qDiv.appendChild(qText);
 
             q.choices.forEach((choiceHtml, oIdx) => {
@@ -185,8 +221,10 @@ function renderExam() {
             box.addEventListener('click', () => {
                 document.getElementById('question-' + globalNo).scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
-            grid.appendChild(box);
+            (progressGroupWrap || grid).appendChild(box);
         });
+
+        if (progressGroupWrap) grid.appendChild(progressGroupWrap);
 
         container.appendChild(groupDiv);
     });
