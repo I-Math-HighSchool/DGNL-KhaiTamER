@@ -16,7 +16,7 @@ window.DGNL_FIREBASE_CONFIG = {
     projectId: "dgnl-2027",
     storageBucket: "dgnl-2027.firebasestorage.app",
     messagingSenderId: "304374841717",
-    appId: "1:304374841717:web:26577502bfedc7314d533c"
+    appId: "1:304374841717:web:d902f327f757b6ee4d533c"
 };
 
 // =========================================================================
