@@ -1,0 +1,7 @@
+# Không đưa các file/thư mục quản trị nhạy cảm lên GitHub (chứa mật khẩu học sinh
+# và khoá quản trị Firebase)
+Claude outputs/
+cong-cu-quan-tri/
+service-account.json
+danh-sach-hoc-sinh.csv
+danh-sach-phat-hoc-sinh.csv
