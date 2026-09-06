@@ -21,7 +21,13 @@ async function napToanBoDuLieu() {
     const trangThai = document.getElementById('data-load-status');
     const manifest = (window.DGNL_MANIFEST && window.DGNL_MANIFEST.chuyenDe) || [];
     if (manifest.length === 0) {
-        trangThai.textContent = 'Chưa có dữ liệu chuyên đề nào trong data/manifest.js.';
+        trangThai.textContent = coDeThatKhongDe()
+            ? 'Chưa có dữ liệu chuyên đề nào trong data/manifest.js (vẫn có Đề tổng hợp thật).'
+            : 'Chưa có dữ liệu chuyên đề nào trong data/manifest.js.';
+        DGNL_DATA_READY = true;
+        populateDropdown();
+        capNhatHienThiTheoCheDo();
+        document.getElementById('btn-generate').disabled = !coDeThatKhongDe();
         return;
     }
     const ketQua = await Promise.all(manifest.map(m => napMotFileDuLieu(m.file)));
@@ -31,6 +37,7 @@ async function napToanBoDuLieu() {
         : `Đã nạp xong ${ketQua.length} chuyên đề câu hỏi.`;
     DGNL_DATA_READY = true;
     populateDropdown();
+    capNhatHienThiTheoCheDo();
     document.getElementById('btn-generate').disabled = false;
 }
 
@@ -49,7 +56,10 @@ function populateDropdown() {
     const manifest = (window.DGNL_MANIFEST && window.DGNL_MANIFEST.chuyenDe) || [];
     const optTong = document.createElement('option');
     optTong.value = '__TONG_HOP__';
-    optTong.textContent = '⭐ Đề tổng hợp phần Toán ĐGNL (random toàn bộ chuyên đề)';
+    const soDeThat = (window.DGNL_DE_THAT && window.DGNL_DE_THAT.length) || 0;
+    optTong.textContent = soDeThat > 0
+        ? '⭐ Đề tổng hợp phần Toán ĐGNL (42 câu · 50 phút, đúng ma trận đề thi thật)'
+        : '⭐ Đề tổng hợp phần Toán ĐGNL (random toàn bộ chuyên đề)';
     sel.appendChild(optTong);
     manifest.forEach(m => {
         const arr = (window.DGNL_CHUYEN_DE && window.DGNL_CHUYEN_DE[m.id]) || [];
@@ -83,10 +93,27 @@ function taoNguonCauHoi(chuyenDeId) {
     return (window.DGNL_CHUYEN_DE && window.DGNL_CHUYEN_DE[chuyenDeId]) || [];
 }
 
+// Chế độ "Đề tổng hợp phần Toán ĐGNL" khi ĐÃ có dữ liệu đề thi thật
+// (window.DGNL_DE_THAT): thay vì random rời rạc từng câu/từng cụm từ 14
+// chuyên đề riêng lẻ (không đúng cấu trúc đề thi thật vì thiếu hẳn 1 số
+// dạng như Tích phân, Oxyz, Tư duy logic, Đọc biểu đồ/bảng số liệu...),
+// mỗi lần tạo đề sẽ LẤY NGUYÊN 1 ĐỀ THẬT (đủ 42 câu, đúng thứ tự, đúng cụm)
+// trong số các đề chính thức đã có, chọn ngẫu nhiên — vẫn xáo trộn thứ tự
+// 4 đáp án của từng câu như các chế độ luyện tập khác.
+function coDeThatKhongDe() {
+    return !!(window.DGNL_DE_THAT && window.DGNL_DE_THAT.length > 0);
+}
+
 // ---------------- 2. TẠO ĐỀ ----------------
 function taoDe() {
     const chuyenDeId = document.getElementById('select-chuyen-de').value;
     const chuyenDeTen = document.getElementById('select-chuyen-de').selectedOptions[0].textContent;
+
+    if (chuyenDeId === '__TONG_HOP__' && coDeThatKhongDe()) {
+        taoDeTongHopThat(chuyenDeTen);
+        return;
+    }
+
     let soCauMongMuon = parseInt(document.getElementById('input-so-cau').value, 10) || 20;
 
     // pool: mảng các "nhóm" — mỗi nhóm có thể là 1 câu độc lập (cauHoi có
@@ -113,22 +140,29 @@ function taoDe() {
         tongDaChon += soCauTrongNhom(nhom);
     }
 
-    const groups = nhomDaChon.map(nhom => {
-        // Giữ nguyên THỨ TỰ các câu con trong 1 cụm (câu sau có thể tham
-        // chiếu kết quả câu trước) — chỉ xáo trộn thứ tự 4 đáp án của
-        // riêng từng câu, vẫn theo dõi đúng đáp án đúng.
-        const cauHoi = nhom.cauHoi.map(q => {
-            const order = shuffleArray([0, 1, 2, 3]);
-            const choices = order.map(i => q.choices[i]);
-            const correctIndex = order.indexOf(q.correctIndex);
-            return { question: q.question, choices, correctIndex, explain: q.explain };
-        });
-        return { noiDungChung: nhom.noiDungChung || null, cauHoi };
-    });
+    const groups = nhomDaChon.map(xaoTronDapAnNhom);
 
     const enableTimer = document.getElementById('check-timer').checked;
     const soPhut = parseInt(document.getElementById('input-so-phut').value, 10) || 30;
 
+    batDauLamBai(chuyenDeTen, groups, enableTimer, soPhut);
+}
+
+// Xáo trộn thứ tự 4 đáp án của TỪNG câu trong 1 nhóm/cụm — giữ nguyên THỨ
+// TỰ các câu con trong cụm (câu sau có thể tham chiếu kết quả câu trước).
+function xaoTronDapAnNhom(nhom) {
+    const cauHoi = nhom.cauHoi.map(q => {
+        const order = shuffleArray([0, 1, 2, 3]);
+        const choices = order.map(i => q.choices[i]);
+        const correctIndex = order.indexOf(q.correctIndex);
+        return { question: q.question, choices, correctIndex, explain: q.explain };
+    });
+    return { noiDungChung: nhom.noiDungChung || null, cauHoi };
+}
+
+// Khởi tạo currentExam + hiển thị + (tuỳ chọn) chạy đồng hồ đếm giờ — dùng
+// chung cho cả 2 chế độ: luyện tập theo chuyên đề và đề tổng hợp thật.
+function batDauLamBai(chuyenDeTen, groups, enableTimer, soPhut) {
     currentExam = {
         chuyenDeTen,
         groups,
@@ -141,6 +175,19 @@ function taoDe() {
     renderExam();
     if (enableTimer) startTimer();
     else document.getElementById('timer-box').style.display = 'none';
+}
+
+// Chế độ "Đề tổng hợp phần Toán ĐGNL" — lấy ngẫu nhiên NGUYÊN 1 đề thi
+// chính thức (đủ 42 câu, giữ đúng thứ tự + cụm câu hỏi như đề thật), luôn
+// bật đồng hồ 50 phút bất kể người dùng có tick "Bật đếm giờ" hay không
+// (2 ô nhập "Số câu hỏi" / "Bật đếm giờ" đã bị ẩn ở chế độ này, xem
+// capNhatHienThiTheoCheDo()).
+function taoDeTongHopThat(chuyenDeTenGoc) {
+    const danhSachDe = window.DGNL_DE_THAT || [];
+    const de = danhSachDe[Math.floor(Math.random() * danhSachDe.length)];
+    const groups = de.nhom.map(xaoTronDapAnNhom);
+    const chuyenDeTen = `${chuyenDeTenGoc} — ${de.ten}`;
+    batDauLamBai(chuyenDeTen, groups, true, 50);
 }
 
 // ---------------- 3. HIỂN THỊ ĐỀ ----------------
@@ -337,6 +384,26 @@ async function hienThiLichSu() {
 }
 
 // ---------------- 7. GẮN SỰ KIỆN ----------------
+
+// Ở chế độ "Đề tổng hợp phần Toán ĐGNL" (khi đã có dữ liệu đề thi thật):
+// ẩn "Số câu hỏi" + "Bật đếm giờ làm bài" (đề luôn cố định 42 câu/50 phút,
+// không cho tuỳ chỉnh) và hiện dòng ghi chú thay thế; các chuyên đề khác
+// vẫn giữ nguyên như cũ.
+function capNhatHienThiTheoCheDo() {
+    const chuyenDeId = document.getElementById('select-chuyen-de').value;
+    const laTongHopThat = chuyenDeId === '__TONG_HOP__' && coDeThatKhongDe();
+    document.getElementById('wrap-so-cau').style.display = laTongHopThat ? 'none' : '';
+    document.getElementById('wrap-check-timer').style.display = laTongHopThat ? 'none' : '';
+    document.getElementById('tong-hop-info').style.display = laTongHopThat ? 'block' : 'none';
+    if (laTongHopThat) {
+        document.getElementById('timer-minutes-wrap').style.display = 'none';
+    } else {
+        document.getElementById('timer-minutes-wrap').style.display =
+            document.getElementById('check-timer').checked ? 'block' : 'none';
+    }
+}
+document.getElementById('select-chuyen-de').addEventListener('change', capNhatHienThiTheoCheDo);
+
 document.getElementById('check-timer').addEventListener('change', (e) => {
     document.getElementById('timer-minutes-wrap').style.display = e.target.checked ? 'block' : 'none';
 });

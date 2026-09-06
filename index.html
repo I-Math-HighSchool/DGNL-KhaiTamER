@@ -205,7 +205,12 @@
 
         @media (min-width: 992px) {
             .main-layout { flex-direction: row; align-items: flex-start; }
-            .sidebar-panel { width: 320px; flex-shrink: 0; position: sticky; top: 80px; }
+            .sidebar-panel {
+                width: 320px; flex-shrink: 0; position: sticky; top: 80px;
+                max-height: calc(100vh - 100px); overflow-y: auto;
+            }
+            .sidebar-panel::-webkit-scrollbar { width: 6px; }
+            .sidebar-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
             .exam-panel { flex: 1; }
         }
         @media (max-width: 576px) {
@@ -254,11 +259,14 @@
                     <label class="form-label small fw-bold">Chuyên đề</label>
                     <select id="select-chuyen-de" class="form-select"></select>
                 </div>
-                <div class="mb-3">
+                <div class="mb-3 alert alert-warning py-2 px-3 mb-3" id="tong-hop-info" style="display:none; font-size:0.85rem;">
+                    <i class="fa-solid fa-circle-info"></i> Đề tổng hợp cố định <b>42 câu / 50 phút</b>, đúng ma trận đề thi ĐGNL chính thức (mỗi lần tạo đề sẽ lấy ngẫu nhiên 1 trong các đề thi thật đã lưu).
+                </div>
+                <div class="mb-3" id="wrap-so-cau">
                     <label class="form-label small fw-bold">Số câu hỏi</label>
                     <input type="number" id="input-so-cau" class="form-control" value="20" min="5" max="200">
                 </div>
-                <div class="mb-3 form-check">
+                <div class="mb-3 form-check" id="wrap-check-timer">
                     <input type="checkbox" class="form-check-input" id="check-timer">
                     <label class="form-check-label small" for="check-timer">Bật đếm giờ làm bài</label>
                 </div>
@@ -322,6 +330,7 @@
     <script src="js/danh-sach-duoc-phep.js"></script>
     <script src="js/auth.js"></script>
     <script src="data/manifest.js"></script>
+    <script src="data/de-that.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
