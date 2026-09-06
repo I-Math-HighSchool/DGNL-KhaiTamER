@@ -28,12 +28,15 @@ WebDGNL/
 3. Mở file `js/firebase-config.js`, copy đè các giá trị vào object
    `window.DGNL_FIREBASE_CONFIG`.
 4. Vào mục **Authentication** (bên trái) → tab **Sign-in method** → bấm
-   **Email/Password** → bật (Enable) → Save. (Web này đăng nhập bằng
-   **mã học sinh + mật khẩu**, không dùng Google.)
-5. Vào mục **Firestore Database** → **Create database** → chọn chế độ
+   **Google** → bật (Enable) → chọn email hỗ trợ → Save. (Web này đăng
+   nhập bằng **Gmail của học sinh**, không dùng mã + mật khẩu riêng.)
+5. Vẫn trong mục **Authentication** → tab **Settings** → **Authorized
+   domains** → bấm **Add domain** → thêm tên miền GitHub Pages của bạn
+   (ví dụ `i-math-highschool.github.io`) nếu chưa có sẵn.
+6. Vào mục **Firestore Database** → **Create database** → chọn chế độ
    **Production mode** → chọn khu vực gần Việt Nam (ví dụ
    `asia-southeast1`) → Create.
-6. Vào tab **Rules** của Firestore, dán quy tắc sau rồi **Publish** (chỉ
+7. Vào tab **Rules** của Firestore, dán quy tắc sau rồi **Publish** (chỉ
    cho phép người dùng đọc/ghi kết quả của chính họ):
 
    ```
@@ -48,45 +51,25 @@ WebDGNL/
    }
    ```
 
-## 3. Cấp tài khoản (mã học sinh + mật khẩu) cho từng học sinh
+## 3. Cấp quyền vào web cho từng học sinh (danh sách Gmail được phép)
 
-Web này **không** dùng Google — mỗi học sinh đăng nhập bằng 1 **mã học
-sinh** (ví dụ `72301`) + 1 **mật khẩu** do bạn cấp. Vì trang web là file
-tĩnh (ai cũng xem được code), mã + mật khẩu **không được** ghi trong
-`firebase-config.js` hay bất kỳ file nào của web — chúng phải được tạo
-trực tiếp và an toàn bên trong Firebase bằng 1 script chạy trên máy bạn.
+Web này đăng nhập bằng **chính Gmail của học sinh** qua Google — không
+cần đặt mã học sinh hay mật khẩu riêng, Google đã lo việc xác thực. Bạn
+chỉ cần quản lý 1 **danh sách các Gmail được phép** vào web.
 
-**Gợi ý cách đặt mã học sinh** (tuỳ bạn, ví dụ theo năm + lớp + môn + số
-thứ tự): năm `2027` → lấy số `7`, lớp `12` → lấy số `2`, ĐGNL → số `3`,
-rồi số thứ tự 2 chữ số `01, 02, ...` → mã dạng `72301`, `72302`, ...
+**Cách thêm/bớt học sinh:**
 
-**Các bước cấp tài khoản:**
+1. Mở file `js/danh-sach-duoc-phep.js`.
+2. Thêm hoặc xoá dòng email trong mảng `window.DGNL_ALLOWED_EMAILS` (viết
+   đúng chính tả Gmail của học sinh, chữ thường).
+3. Lưu file, rồi đưa (commit + push) lên GitHub như bình thường (qua
+   GitHub Desktop) — không cần chạy script hay tạo tài khoản gì thêm.
 
-1. Tạo 1 thư mục **hoàn toàn riêng, KHÔNG nằm trong** thư mục repo GitHub
-   (ví dụ `D:\WebDGNL-QuanTri\`) — đây là nơi lưu công cụ quản trị, tuyệt
-   đối không đưa các file ở bước này lên GitHub.
-2. Copy 4 file trong thư mục `cong-cu-quan-tri` (đi kèm bản giao này) vào
-   thư mục vừa tạo: `tao-tai-khoan-hoc-sinh.js`, `package.json`,
-   `danh-sach-hoc-sinh-MAU.csv`, `DOC-TRUOC.txt`.
-3. Trong Firebase Console → **Project settings** (bánh răng) → tab
-   **Service accounts** → **Generate new private key** → tải về 1 file
-   `.json` → đổi tên thành `service-account.json` → để cùng thư mục trên.
-   File này mở toàn quyền quản trị Firebase của bạn — không chia sẻ, không
-   đưa lên mạng.
-4. Đổi tên `danh-sach-hoc-sinh-MAU.csv` thành `danh-sach-hoc-sinh.csv`,
-   điền danh sách học sinh (cột `ma`, `ten`, `matkhau`).
-5. Mở Command Prompt / PowerShell tại thư mục đó, chạy lần lượt:
-   ```
-   npm install firebase-admin
-   node tao-tai-khoan-hoc-sinh.js
-   ```
-   Script sẽ tạo (hoặc cập nhật) tài khoản cho từng học sinh trong danh
-   sách, kèm báo cáo kết quả.
-6. Muốn thêm học sinh mới hoặc đổi mật khẩu: sửa lại file
-   `danh-sach-hoc-sinh.csv` rồi chạy lại `node tao-tai-khoan-hoc-sinh.js`.
+File này công khai (ai xem code web cũng thấy được danh sách email) nhưng
+**không hề chứa mật khẩu** nào, nên hoàn toàn an toàn khi đưa lên GitHub.
 
-Học sinh không có tài khoản (chưa được cấp) sẽ đăng nhập bị báo "Sai mã
-học sinh hoặc mật khẩu".
+Học sinh dùng Gmail **không có trong danh sách** khi đăng nhập sẽ bị báo
+"Email chưa được đăng ký sử dụng web này".
 
 ## 4. Đưa web lên mạng (hosting)
 
@@ -95,9 +78,9 @@ Có thể dùng GitHub Pages giống hệt cách bạn đang host web 21-NganHan
 Pages → chọn nhánh chứa code → Save. Firebase Auth hoạt động tốt trên
 GitHub Pages vì mọi xử lý đăng nhập diễn ra ở phía trình duyệt.
 
-**Lưu ý:** đăng nhập bằng mã học sinh + mật khẩu (Email/Password) không
-cần khai báo "Authorized domains" như Google Sign-in, nên bỏ qua bước
-này.
+**Lưu ý:** nhớ thêm đúng tên miền GitHub Pages vào **Authorized domains**
+ở bước 5 của mục 2, nếu không học sinh sẽ không đăng nhập Google được khi
+vào web qua GitHub Pages.
 
 ## 5. Thêm chuyên đề mới sau này
 
@@ -117,8 +100,8 @@ màn hình để bạn bổ sung sau.
 
 - ✅ Chuyên đề riêng theo từng chương (dữ liệu từ thư mục `DanhGiaNangLuc`).
 - ✅ "Đề tổng hợp phần Toán ĐGNL" — bốc ngẫu nhiên câu hỏi từ mọi chuyên đề.
-- ✅ Đăng nhập bằng mã học sinh + mật khẩu (không dùng Google), quản lý
-  tài khoản qua script `tao-tai-khoan-hoc-sinh.js` (mục 3).
+- ✅ Đăng nhập bằng Gmail qua Google, chỉ cho phép các email trong danh
+  sách `js/danh-sach-duoc-phep.js` (mục 3).
 - ✅ Lưu lịch sử điểm từng học sinh vào Firestore, xem lại được.
 - ⚠️ Các câu hỏi có hình ảnh chèn từ file `\includegraphics` (ảnh cắt từ
   PDF gốc) hiện KHÔNG có file ảnh đi kèm nên bị bỏ qua tạm thời — cần bổ
