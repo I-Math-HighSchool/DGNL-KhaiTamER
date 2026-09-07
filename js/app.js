@@ -7,10 +7,14 @@ let DGNL_DATA_READY = false;
 let currentExam = null; // { groups: [...], timer, timeLeft, submitted }
 
 // ---------------- 0. NẠP TOÀN BỘ FILE DỮ LIỆU CHUYÊN ĐỀ ----------------
+// Cùng số phiên bản "phá cache" như các thẻ <script> tĩnh trong index.html —
+// đổi số này mỗi lần deploy bản mới để trình duyệt luôn tải file dữ liệu
+// chuyên đề mới nhất, không bị kẹt ở bản .js cũ trong cache.
+const DGNL_ASSET_V = '20260907a';
 function napMotFileDuLieu(src) {
     return new Promise((resolve) => {
         const s = document.createElement('script');
-        s.src = src;
+        s.src = src + (src.indexOf('?') === -1 ? '?v=' + DGNL_ASSET_V : '&v=' + DGNL_ASSET_V);
         s.onload = () => resolve({ src, ok: true });
         s.onerror = () => { console.warn('Không nạp được file dữ liệu:', src); resolve({ src, ok: false }); };
         document.body.appendChild(s);
@@ -20,25 +24,41 @@ function napMotFileDuLieu(src) {
 async function napToanBoDuLieu() {
     const trangThai = document.getElementById('data-load-status');
     const manifest = (window.DGNL_MANIFEST && window.DGNL_MANIFEST.chuyenDe) || [];
-    if (manifest.length === 0) {
-        trangThai.textContent = coDeThatKhongDe()
-            ? 'Chưa có dữ liệu chuyên đề nào trong data/manifest.js (vẫn có Đề tổng hợp thật).'
-            : 'Chưa có dữ liệu chuyên đề nào trong data/manifest.js.';
+    // BỌC try/catch/finally quanh toàn bộ phần khởi tạo giao diện: nếu 1 bước
+    // nào đó lỡ lỗi (VD trình duyệt còn giữ cache 1 file .js cũ không khớp
+    // với index.html mới), nút "Tạo đề" vẫn PHẢI được bật lại ở khối finally
+    // thay vì bị kẹt "disabled" mãi mãi chỉ vì 1 lỗi ở bước trước đó chưa kịp
+    // chạy tới dòng bật nút — tránh lặp lại kiểu lỗi "nút Tạo đề hết bấm
+    // được" sau mỗi lần cập nhật code.
+    try {
+        if (manifest.length === 0) {
+            trangThai.textContent = coDeThatKhongDe()
+                ? 'Chưa có dữ liệu chuyên đề nào trong data/manifest.js (vẫn có Đề tổng hợp thật).'
+                : 'Chưa có dữ liệu chuyên đề nào trong data/manifest.js.';
+            DGNL_DATA_READY = true;
+            populateDropdown();
+            capNhatHienThiTheoCheDo();
+            return;
+        }
+        const ketQua = await Promise.all(manifest.map(m => napMotFileDuLieu(m.file)));
+        const soLoi = ketQua.filter(r => !r.ok).length;
+        trangThai.textContent = soLoi > 0
+            ? `Đã nạp ${ketQua.length - soLoi}/${ketQua.length} chuyên đề (có ${soLoi} lỗi, xem Console).`
+            : `Đã nạp xong ${ketQua.length} chuyên đề câu hỏi.`;
         DGNL_DATA_READY = true;
         populateDropdown();
         capNhatHienThiTheoCheDo();
-        document.getElementById('btn-generate').disabled = !coDeThatKhongDe();
-        return;
+    } catch (e) {
+        console.error('Lỗi khi khởi tạo dữ liệu/giao diện — vui lòng tải lại trang (Ctrl+Shift+R) để xoá cache cũ:', e);
+        trangThai.textContent = 'Có lỗi khi tải trang, vui lòng bấm Ctrl+Shift+R để tải lại (xoá cache cũ) rồi thử lại.';
+    } finally {
+        // Bật nút hễ có ÍT NHẤT 1 nguồn dữ liệu dùng được (chuyên đề thường
+        // HOẶC đề thi thật) — tính lại độc lập với try/catch ở trên để dù
+        // bước nạp file có lỗi giữa chừng, nút vẫn phản ánh đúng những gì
+        // ĐÃ nạp được (thay vì luôn khoá cứng khi có lỗi).
+        const coChuyenDe = !!(window.DGNL_MANIFEST && window.DGNL_MANIFEST.chuyenDe && window.DGNL_MANIFEST.chuyenDe.length > 0 && window.DGNL_CHUYEN_DE);
+        document.getElementById('btn-generate').disabled = !(coChuyenDe || coDeThatKhongDe());
     }
-    const ketQua = await Promise.all(manifest.map(m => napMotFileDuLieu(m.file)));
-    const soLoi = ketQua.filter(r => !r.ok).length;
-    trangThai.textContent = soLoi > 0
-        ? `Đã nạp ${ketQua.length - soLoi}/${ketQua.length} chuyên đề (có ${soLoi} lỗi, xem Console).`
-        : `Đã nạp xong ${ketQua.length} chuyên đề câu hỏi.`;
-    DGNL_DATA_READY = true;
-    populateDropdown();
-    capNhatHienThiTheoCheDo();
-    document.getElementById('btn-generate').disabled = false;
 }
 
 // Đếm tổng số câu hỏi thực tế trong 1 mảng "nhóm" (mỗi nhóm có thể chứa
