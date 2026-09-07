@@ -36,7 +36,15 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { color-scheme: light; }
+        :root {
+            color-scheme: light;
+            /* Tông màu chủ đạo: xanh lá (thay cho xanh dương/tím trước đây
+               để tránh trùng tông với site I-Math-HighSchool). Ghi đè biến
+               của Bootstrap để các thành phần mặc định (focus ring, ô check,
+               .text-primary...) cũng tự động đổi màu theo. */
+            --bs-primary: #16a34a;
+            --bs-primary-rgb: 22, 163, 74;
+        }
         body {
             background: #f8fafc;
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -48,7 +56,7 @@
         /* ============ MÀN HÌNH ĐĂNG NHẬP ============ */
         #login-overlay {
             position: fixed; inset: 0; z-index: 2000;
-            background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
             display: flex; align-items: center; justify-content: center;
             padding: 20px;
         }
@@ -60,7 +68,7 @@
         .login-logo { max-width: 200px; width: 100%; height: auto; margin-bottom: 16px; }
         .login-card .logo-title {
             font-size: 1.25rem; font-weight: 800;
-            background: linear-gradient(45deg, #0284c7, #4f46e5);
+            background: linear-gradient(45deg, #16a34a, #15803d);
             -webkit-background-clip: text; background-clip: text;
             -webkit-text-fill-color: transparent; margin-bottom: 6px;
         }
@@ -70,7 +78,7 @@
             padding: 12px 16px; font-size: 0.95rem; margin-bottom: 12px; color: #1e293b;
             outline: none; transition: all 0.2s ease;
         }
-        .login-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+        .login-input:focus { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
         .btn-login-submit {
             display: flex; align-items: center; justify-content: center; gap: 10px;
             background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px;
@@ -98,7 +106,7 @@
         .header-logo { height: 38px; width: auto; flex-shrink: 0; }
         .main-title {
             font-size: 1.1rem; font-weight: 800;
-            background: linear-gradient(45deg, #0284c7, #4f46e5);
+            background: linear-gradient(45deg, #16a34a, #15803d);
             -webkit-background-clip: text; background-clip: text;
             -webkit-text-fill-color: transparent; margin: 0;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -109,7 +117,7 @@
         }
         .user-badge .u-avatar-icon {
             width: 28px; height: 28px; border-radius: 50%; overflow: hidden;
-            background: linear-gradient(45deg, #0284c7, #4f46e5); color: #fff;
+            background: linear-gradient(45deg, #16a34a, #15803d); color: #fff;
             display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
         }
         .user-badge .u-email { font-size: 0.8rem; font-weight: 600; color: #334155; }
@@ -136,16 +144,11 @@
            sinh dễ nhận ra các câu này liên quan đến nhau. */
         .progress-cum-wrap {
             grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px;
-            padding: 5px; border: 1px dashed #4f46e5; border-radius: 8px; background: #eef2ff;
+            padding: 5px; border: 1px dashed #16a34a; border-radius: 8px; background: #f0fdf4;
         }
         .progress-cum-wrap .progress-box { flex: 1 1 34px; }
-        .question-item-cum { border-left: 3px solid #4f46e5; padding-left: 10px; }
-        .badge-cum {
-            display: inline-block; background: #eef2ff; color: #4f46e5; font-weight: 700;
-            font-size: 0.7rem; padding: 1px 8px; border-radius: 999px; vertical-align: middle;
-        }
-        .progress-box.answered { background: #e0f2fe; border-color: #0284c7; color: #0284c7; }
-        .progress-box.active { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3); border-color: #4f46e5; }
+        .progress-box.answered { background: #16a34a; border-color: #16a34a; color: #ffffff; }
+        .progress-box.active { box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.3); border-color: #16a34a; }
         .progress-box.correct-box { background: #dcfce7; border-color: #22c55e; color: #15803d; }
         .progress-box.wrong-box { background: #fee2e2; border-color: #ef4444; color: #b91c1c; }
 
@@ -154,18 +157,39 @@
             color: white; border-radius: 12px; padding: 12px; font-weight: 800; font-size: 1.4rem;
             text-align: center; display: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
         }
+        /* Đồng hồ đếm giờ đặt ngay trên thanh header (luôn dính ở đầu trang,
+           position: sticky) để học sinh luôn nhìn thấy thời gian còn lại dù
+           đang cuộn xem câu hỏi nào, thay vì phải cuộn lên đầu sidebar. */
+        .app-header .timer-box {
+            padding: 6px 20px; font-size: 1.15rem; border-radius: 10px;
+            order: 2;
+        }
+        .app-header .user-badge { order: 3; }
 
         .group-block { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 25px; }
         .group-block:last-child { border: none; }
-        .shared-context {
-            background: #eef2ff; border: 1px solid #c7d2fe; border-left: 5px solid #4f46e5;
-            border-radius: 0 10px 10px 0; padding: 12px 16px; margin-bottom: 14px;
-            font-size: 0.92rem; color: #312e81; font-weight: 600;
+        /* Cụm nhiều câu dùng chung dữ kiện: LUÔN bọc trong 1 khung riêng rõ
+           ràng (viền + nền nhạt bao quanh TOÀN BỘ các câu con) để ranh giới
+           "câu nào thuộc cụm nào" rõ ràng ngay cả khi cụm không có đoạn
+           "dữ kiện chung" tách riêng — tránh tình trạng chỉ có 1 đường viền
+           dọc kéo dài liên tục qua nhiều câu không rõ điểm bắt đầu/kết thúc. */
+        .group-block-cum {
+            border: 2px solid #bbf7d0; background: #f0fdf4; border-radius: 14px;
+            padding: 16px 18px 6px; margin-bottom: 25px;
         }
+        .group-block-cum .question-item:last-child { border-bottom: none; margin-bottom: 6px; padding-bottom: 6px; }
+        .group-block-cum:last-child { border: 2px solid #bbf7d0; }
+        .shared-context {
+            background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #16a34a;
+            border-radius: 0 10px 10px 0; padding: 12px 16px; margin-bottom: 14px;
+            font-size: 0.92rem; color: #14532d; font-weight: 600;
+        }
+        /* Câu dẫn dùng chung: viết như văn phong đề thi thật ("Dựa vào thông
+           tin sau, trả lời các câu hỏi ...") — chữ đậm bình thường, KHÔNG
+           còn kiểu huy hiệu (badge) tròn màu như trước, để giống đề gốc. */
         .shared-context-label {
-            display: inline-block; background: #4f46e5; color: #fff; font-weight: 800;
-            font-size: 0.72rem; letter-spacing: 0.02em; text-transform: uppercase;
-            padding: 3px 10px; border-radius: 999px; margin-bottom: 8px;
+            display: block; color: #15803d; font-weight: 800;
+            font-size: 0.9rem; margin-bottom: 10px;
         }
         .question-item { border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 20px; }
         .question-item:last-child { border: none; }
@@ -178,7 +202,7 @@
         .custom-option-wrapper:hover { background: #f1f5f9; border-color: #cbd5e1; }
         .form-check-input { width: 1.1rem; height: 1.1rem; flex-shrink: 0; border: 2px solid #64748b; }
         .form-check-label { color: #334155; margin-left: 8px; font-size: 0.9rem; width: 100%; cursor: pointer; }
-        .form-check-input:checked ~ .form-check-label { color: #0284c7; font-weight: 700; }
+        .form-check-input:checked ~ .form-check-label { color: #15803d; font-weight: 700; }
 
         .custom-option-wrapper.option-correct { background: #dcfce7; border-color: #22c55e; }
         .custom-option-wrapper.option-correct .form-check-label { color: #15803d; font-weight: 700; }
@@ -195,12 +219,12 @@
         .question-text, .explain-box, .form-check-label, .shared-context { word-wrap: break-word; overflow-wrap: break-word; }
 
         .part-header {
-            background: #f1f5f9; padding: 10px 16px; border-left: 4px solid #0284c7; font-weight: 800;
-            color: #0284c7; font-size: 0.95rem; margin: 25px 0 15px 0; border-radius: 0 8px 8px 0;
+            background: #f1f5f9; padding: 10px 16px; border-left: 4px solid #16a34a; font-weight: 800;
+            color: #15803d; font-size: 0.95rem; margin: 25px 0 15px 0; border-radius: 0 8px 8px 0;
         }
-        .btn-custom-generate { background: #0284c7; color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; }
-        .btn-custom-submit { background: #4f46e5; color: white; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1.05rem; }
-        .score-display-box { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; border-radius: 12px; padding: 15px; font-weight: 700; }
+        .btn-custom-generate { background: #16a34a; color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; }
+        .btn-custom-submit { background: #15803d; color: white; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1.05rem; }
+        .score-display-box { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; border-radius: 12px; padding: 15px; font-weight: 700; }
 
         .dgnl-table td { font-size: 0.85rem; }
 
@@ -250,6 +274,7 @@
                 <img src="assets/logo-khai-tam.png" alt="Trung tâm luyện thi Khai Tâm" class="header-logo">
                 <h1 class="main-title">Luyện thi ĐGNL Khai Tâm</h1>
             </div>
+            <div class="timer-box" id="timer-box"><i class="fa-solid fa-clock"></i> <span id="timer-display">00:00</span></div>
             <div class="user-badge">
                 <div class="u-avatar-icon" id="user-avatar-wrap"><i class="fa-solid fa-user"></i></div>
                 <span class="u-email" id="user-email"></span>
@@ -264,9 +289,6 @@
                 <div class="mb-3">
                     <label class="form-label small fw-bold">Chuyên đề</label>
                     <select id="select-chuyen-de" class="form-select"></select>
-                </div>
-                <div class="mb-3 alert alert-warning py-2 px-3 mb-3" id="tong-hop-info" style="display:none; font-size:0.85rem;">
-                    <i class="fa-solid fa-circle-info"></i> Đề tổng hợp cố định <b>42 câu / 50 phút</b>, đúng ma trận đề thi ĐGNL chính thức (mỗi lần tạo đề sẽ lấy ngẫu nhiên 1 trong các đề thi thật đã lưu).
                 </div>
                 <div class="mb-3" id="wrap-so-cau">
                     <label class="form-label small fw-bold">Số câu hỏi</label>
@@ -288,8 +310,6 @@
                 <button class="btn btn-outline-secondary w-100" id="btn-show-history">
                     <i class="fa-solid fa-clock-rotate-left"></i> Lịch sử làm bài
                 </button>
-
-                <div class="timer-box" id="timer-box"><i class="fa-solid fa-clock"></i> <span id="timer-display">00:00</span></div>
 
                 <div id="progress-wrap" style="display:none;">
                     <hr>

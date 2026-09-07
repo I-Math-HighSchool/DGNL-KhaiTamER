@@ -162,14 +162,19 @@ function xaoTronDapAnNhom(nhom) {
 
 // Khởi tạo currentExam + hiển thị + (tuỳ chọn) chạy đồng hồ đếm giờ — dùng
 // chung cho cả 2 chế độ: luyện tập theo chuyên đề và đề tổng hợp thật.
-function batDauLamBai(chuyenDeTen, groups, enableTimer, soPhut) {
+// soCauBatDau: số thứ tự hiển thị của câu ĐẦU TIÊN (mặc định 1) — phần
+// "Đề tổng hợp phần Toán ĐGNL" tương ứng đúng câu 61-102 của đề thi thật nên
+// đánh số bắt đầu từ 61 để khớp với đề gốc, tiện cho việc sau này ghép thêm
+// các phần/môn khác (mỗi phần giữ đúng dải số thứ tự thật của nó).
+function batDauLamBai(chuyenDeTen, groups, enableTimer, soPhut, soCauBatDau) {
     currentExam = {
         chuyenDeTen,
         groups,
         submitted: false,
         timeLeft: enableTimer ? soPhut * 60 : null,
         timer: null,
-        startedAt: Date.now()
+        startedAt: Date.now(),
+        soCauBatDau: soCauBatDau || 1
     };
 
     renderExam();
@@ -187,7 +192,7 @@ function taoDeTongHopThat(chuyenDeTenGoc) {
     const de = danhSachDe[Math.floor(Math.random() * danhSachDe.length)];
     const groups = de.nhom.map(xaoTronDapAnNhom);
     const chuyenDeTen = `${chuyenDeTenGoc} — ${de.ten}`;
-    batDauLamBai(chuyenDeTen, groups, true, 50);
+    batDauLamBai(chuyenDeTen, groups, true, 50, 61);
 }
 
 // ---------------- 3. HIỂN THỊ ĐỀ ----------------
@@ -202,33 +207,55 @@ function renderExam() {
     container.innerHTML = '';
     grid.innerHTML = '';
 
-    let qNo = 0;
+    // soCauBatDau: số câu ĐẦU TIÊN được đánh số (mặc định 1) — "Đề tổng hợp
+    // phần Toán ĐGNL" ứng đúng câu 61-102 của đề thật nên bắt đầu từ 61,
+    // thay vì luôn đánh lại từ 1, để khớp số câu với đề gốc (tiện ghép thêm
+    // các phần/môn khác sau này, mỗi phần giữ đúng dải số của nó).
+    let qNo = (currentExam.soCauBatDau || 1) - 1;
     currentExam.groups.forEach((group, gIdx) => {
         const groupDiv = document.createElement('div');
-        groupDiv.className = 'group-block';
+        // Cụm nhiều câu dùng chung dữ kiện: LUÔN bọc trong 1 khung riêng có
+        // viền + nền nhạt để ranh giới cụm rõ ràng — kể cả khi cụm không có
+        // đoạn "dữ kiện chung" tách riêng (VD nhiều câu cùng dựa vào 1 hàm số
+        // đã nêu ở câu trước) — trước đây những cụm dạng này chỉ có 1 viền
+        // dọc kéo dài liên tục qua nhiều câu, không có điểm bắt đầu/kết thúc
+        // rõ ràng nên nhìn như bị lỗi giao diện.
+        const isMultiGroup = group.cauHoi.length > 1;
+        groupDiv.className = isMultiGroup ? 'group-block group-block-cum' : 'group-block';
 
+        // Câu dẫn dùng chung viết đúng văn phong đề thi thật: "Dựa vào
+        // thông tin sau, trả lời các câu hỏi X, Y, Z." — tính sẵn dải số
+        // câu thật sự sẽ hiển thị cho cụm này (dùng đúng số đã cộng dồn từ
+        // soCauBatDau, không phải số thứ tự nội bộ trong nhóm).
+        let soCauCumStr = '';
+        if (isMultiGroup) {
+            const soDau = qNo + 1;
+            const soCuoi = qNo + group.cauHoi.length;
+            const ds = [];
+            for (let n = soDau; n <= soCuoi; n++) ds.push(n);
+            soCauCumStr = ds.join(', ');
+        }
+
+        if (isMultiGroup) {
+            const nhan = document.createElement('div');
+            nhan.className = 'shared-context-label';
+            nhan.innerHTML = `<i class="fa-solid fa-link"></i> Dựa vào thông tin sau, trả lời các câu hỏi ${soCauCumStr}.`;
+            groupDiv.appendChild(nhan);
+        }
         if (group.noiDungChung) {
             const ctx = document.createElement('div');
             ctx.className = 'shared-context';
-            const nhan = document.createElement('div');
-            nhan.className = 'shared-context-label';
-            nhan.innerHTML = `<i class="fa-solid fa-link"></i> Dữ kiện dùng chung cho ${group.cauHoi.length} câu`;
-            ctx.appendChild(nhan);
-            const noiDung = document.createElement('div');
-            noiDung.innerHTML = group.noiDungChung;
-            ctx.appendChild(noiDung);
+            ctx.innerHTML = group.noiDungChung;
             groupDiv.appendChild(ctx);
         }
 
-        // Nếu 1 cụm có nhiều hơn 1 câu con dùng chung ngữ cảnh, gói các ô
-        // "tiến độ" của cụm đó lại với nhau (viền riêng) để học sinh nhận
-        // ra ngay các câu này liên quan đến nhau, dễ quan sát hơn.
-        const isMultiGroup = group.cauHoi.length > 1;
+        // Gói các ô "tiến độ" của cụm đó lại với nhau (viền riêng) để học
+        // sinh nhận ra ngay các câu này liên quan đến nhau, dễ quan sát hơn.
         let progressGroupWrap = null;
         if (isMultiGroup) {
             progressGroupWrap = document.createElement('div');
             progressGroupWrap.className = 'progress-cum-wrap';
-            progressGroupWrap.title = `Cụm ${group.cauHoi.length} câu dùng chung dữ kiện`;
+            progressGroupWrap.title = `Dựa vào thông tin sau, trả lời các câu hỏi ${soCauCumStr}.`;
         }
 
         group.cauHoi.forEach((q, cIdx) => {
@@ -240,8 +267,7 @@ function renderExam() {
 
             const qText = document.createElement('div');
             qText.className = 'question-text';
-            const nhanCum = isMultiGroup ? ' <span class="badge-cum">cụm ' + group.cauHoi.length + ' câu</span>' : '';
-            qText.innerHTML = `<span class="text-primary">Câu ${globalNo}:</span>${nhanCum} ${q.question}`;
+            qText.innerHTML = `<span class="text-primary">Câu ${globalNo}:</span> ${q.question}`;
             qDiv.appendChild(qText);
 
             q.choices.forEach((choiceHtml, oIdx) => {
@@ -400,7 +426,6 @@ function capNhatHienThiTheoCheDo() {
     const laTongHopThat = chuyenDeId === '__TONG_HOP__' && coDeThatKhongDe();
     document.getElementById('wrap-so-cau').style.display = laTongHopThat ? 'none' : '';
     document.getElementById('wrap-check-timer').style.display = laTongHopThat ? 'none' : '';
-    document.getElementById('tong-hop-info').style.display = laTongHopThat ? 'block' : 'none';
     if (laTongHopThat) {
         document.getElementById('timer-minutes-wrap').style.display = 'none';
     } else {
