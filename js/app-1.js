@@ -187,18 +187,6 @@ function xaoTronDapAnNhom(nhom) {
 // đánh số bắt đầu từ 61 để khớp với đề gốc, tiện cho việc sau này ghép thêm
 // các phần/môn khác (mỗi phần giữ đúng dải số thứ tự thật của nó).
 function batDauLamBai(chuyenDeTen, groups, enableTimer, soPhut, soCauBatDau) {
-    // Dọn dẹp đồng hồ đếm giờ CŨ (nếu có) trước khi bắt đầu đề MỚI. Bug thực
-    // tế đã gặp: nếu học sinh tạo đề A có bật đếm giờ, KHÔNG nộp bài (và chưa
-    // hết giờ), rồi bấm "Tạo đề luyện tập" một đề B khác — biến `currentExam`
-    // bị GÁN LẠI thành object mới, nhưng setInterval của đề A vẫn chạy ngầm
-    // (closure bên trong đọc biến `currentExam` theo tham chiếu hiện tại, chứ
-    // không phải giá trị tại lúc tạo). Khi đồng hồ CŨ đó chạm 0, nó gọi
-    // submitExam() trên đề B — khiến đề B tự động "nộp bài" và hiện lời giải
-    // NGAY LẬP TỨC dù học sinh chưa kịp làm câu nào. Phải clearInterval của
-    // đề CŨ trước khi tạo đề MỚI để không còn interval nào chạy ngầm nữa.
-    if (currentExam && currentExam.timer) {
-        clearInterval(currentExam.timer);
-    }
     currentExam = {
         chuyenDeTen,
         groups,
@@ -399,13 +387,6 @@ function submitExam() {
         progBox.classList.add(isCorrect ? 'correct-box' : 'wrong-box');
     });
 
-    // chiTietHtml: lưu lại nguyên trạng HTML của từng CỤM/CÂU (theo đúng thứ
-    // tự hiển thị) SAU KHI đã chấm — gồm cả đoạn "dữ kiện chung" (nếu có) —
-    // để dùng cho trang "Xem lại bài làm" (xem-lai.html): giáo viên hoặc
-    // chính học sinh mở link riêng vẫn thấy đúng y hệt bài đã làm (kể cả
-    // phần dữ kiện chung của cụm câu), không cần tạo lại đề.
-    const chiTietHtml = Array.from(document.querySelectorAll('#questions-container > .group-block')).map(g => g.outerHTML);
-
     const diem = Math.round((soDung / soCau) * 10 * 100) / 100;
     const scoreBox = document.getElementById('score-wrap');
     scoreBox.style.display = 'block';
@@ -420,8 +401,7 @@ function submitExam() {
         window.DGNL_AUTH.saveResult({
             chuyenDe: currentExam.chuyenDeTen,
             soCau, soDung, diem,
-            thoiGianLamBai,
-            chiTiet: chiTietHtml
+            thoiGianLamBai
         });
     }
 
@@ -449,19 +429,13 @@ async function hienThiLichSu() {
         try {
             if (h.thoiDiem && h.thoiDiem.toDate) ngay = h.thoiDiem.toDate().toLocaleString('vi-VN');
         } catch (e) {}
-        const xemLaiBtn = (h.id && h.chiTiet && h.chiTiet.length)
-            ? `<a href="xem-lai.html?id=${encodeURIComponent(h.id)}" target="_blank" class="btn btn-sm btn-outline-secondary ms-2"><i class="fa-solid fa-eye"></i> Xem lại</a>`
-            : '';
         return `
         <div class="history-item">
             <div>
                 <div class="fw-bold">${h.chuyenDe || ''}</div>
                 <div class="small text-muted">${ngay} · ${h.soDung}/${h.soCau} câu đúng</div>
             </div>
-            <div class="d-flex align-items-center">
-                <div class="h-score ${good ? 'good' : 'bad'}">${h.diem}/10</div>
-                ${xemLaiBtn}
-            </div>
+            <div class="h-score ${good ? 'good' : 'bad'}">${h.diem}/10</div>
         </div>`;
     }).join('');
 }
@@ -498,13 +472,3 @@ document.getElementById('btn-show-history').addEventListener('click', hienThiLic
 document.addEventListener('dgnl-auth-ready', () => {
     napToanBoDuLieu();
 });
-
-// Bấm vào cụm từ "Luyện thi ĐGNL Khai Tâm" (ở màn hình đăng nhập lẫn trên
-// header chính) để xem thông tin đội ngũ giáo viên.
-function moModalGiaoVien() {
-    new bootstrap.Modal(document.getElementById('teacher-info-modal')).show();
-}
-const brandTitleLogin = document.getElementById('brand-title-login');
-if (brandTitleLogin) brandTitleLogin.addEventListener('click', moModalGiaoVien);
-const brandTitleApp = document.getElementById('brand-title-app');
-if (brandTitleApp) brandTitleApp.addEventListener('click', moModalGiaoVien);

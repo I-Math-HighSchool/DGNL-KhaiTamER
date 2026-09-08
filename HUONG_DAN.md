@@ -36,20 +36,31 @@ WebDGNL/
 6. Vào mục **Firestore Database** → **Create database** → chọn chế độ
    **Production mode** → chọn khu vực gần Việt Nam (ví dụ
    `asia-southeast1`) → Create.
-7. Vào tab **Rules** của Firestore, dán quy tắc sau rồi **Publish** (chỉ
-   cho phép người dùng đọc/ghi kết quả của chính họ):
+7. Vào tab **Rules** của Firestore, dán quy tắc sau rồi **Publish** — cho
+   phép mỗi học sinh chỉ đọc/ghi được kết quả của chính mình, RIÊNG Gmail
+   giáo viên quản trị (`thuthuy611103@gmail.com`) được đọc TOÀN BỘ kết quả
+   (để dùng trang "Báo cáo kết quả học sinh" xuất Excel — xem mục 8):
 
    ```
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
        match /ketqua/{docId} {
-         allow read: if request.auth != null && request.auth.uid == resource.data.uid;
-         allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+         allow create: if request.auth != null
+                        && request.auth.uid == request.resource.data.uid;
+         allow read: if request.auth != null
+                      && (request.auth.uid == resource.data.uid
+                          || request.auth.token.email == 'thuthuy611103@gmail.com');
+         allow update, delete: if false;
        }
      }
    }
    ```
+
+   **Quan trọng:** nếu chưa dán quy tắc mới này (bản cũ chỉ cho đọc kết quả
+   của chính mình), trang "Báo cáo kết quả học sinh" và trang "Xem lại bài
+   làm" (khi giáo viên mở link của học sinh khác) sẽ báo lỗi "Bạn không có
+   quyền xem dữ liệu này".
 
 ## 3. Cấp quyền vào web cho từng học sinh (danh sách Gmail được phép)
 
@@ -95,6 +106,25 @@ Script sẽ tự tạo lại toàn bộ file `data/chuyen-de/*.js` và
 `data/manifest.js`. Câu hỏi thiếu đáp án đúng (`\True`) hoặc có
 `\includegraphics` (thiếu file ảnh gốc) sẽ tự động bị bỏ qua và báo cáo ra
 màn hình để bạn bổ sung sau.
+
+## 8. Xem lại bài làm & xuất báo cáo Excel cho giáo viên
+
+- **`xem-lai.html?id=<mã bài làm>`**: xem lại đúng y hệt 1 bài đã làm (câu
+  hỏi, đáp án đã chọn, đáp án đúng, lời giải) — mở được từ nút "Xem lại"
+  trong khung "Lịch sử làm bài" của chính học sinh, hoặc từ cột "Xem lại"
+  trong trang báo cáo/file Excel (giáo viên). Chỉ chính học sinh làm bài đó
+  hoặc giáo viên quản trị mới xem được (do Firestore Rules ở mục 2 kiểm
+  soát).
+- **`bao-cao-ket-qua.html`**: trang riêng cho giáo viên — đăng nhập bằng
+  đúng Gmail `thuthuy611103@gmail.com` sẽ thấy bảng TOÀN BỘ lượt nộp bài
+  của mọi học sinh (thời gian nộp, họ tên, email, đề đã làm, điểm, thời
+  gian làm bài) và có nút **"Xuất ra Excel"** để tải về file `.xlsx` (có
+  kèm cột link "Xem lại" bấm được thẳng vào từng bài). Gmail khác đăng nhập
+  vào trang này sẽ bị từ chối.
+- Muốn đổi Gmail quản trị (VD dùng Gmail khác thay vì
+  `thuthuy611103@gmail.com`): sửa hằng số `TEACHER_EMAIL` ở đầu 2 file
+  `js/xem-lai.js` và `js/bao-cao-ket-qua.js`, VÀ sửa lại đúng địa chỉ đó
+  trong quy tắc Firestore ở mục 2 (bước 7).
 
 ## 6. Các phần đã hoàn thành / còn giới hạn
 

@@ -125,6 +125,10 @@
                     soDung: result.soDung,
                     diem: result.diem,
                     thoiGianLamBai: result.thoiGianLamBai || null,
+                    // Lưu lại toàn bộ HTML từng câu (đã chấm) để dùng cho trang
+                    // "Xem lại bài làm" (xem-lai.html) — giáo viên và học sinh
+                    // mở lại đúng y hệt bài đã làm mà không cần tạo lại đề.
+                    chiTiet: result.chiTiet || [],
                     thoiDiem: firebase.firestore.FieldValue.serverTimestamp()
                 });
             } catch (e) {
@@ -141,7 +145,7 @@
                     .orderBy('thoiDiem', 'desc')
                     .limit(50)
                     .get();
-                return snap.docs.map(d => d.data());
+                return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
             } catch (e) {
                 console.error('Lỗi khi tải lịch sử từ Firestore:', e);
                 return [];
