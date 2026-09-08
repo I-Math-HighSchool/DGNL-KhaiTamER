@@ -175,7 +175,7 @@ function xaoTronDapAnNhom(nhom) {
         const order = shuffleArray([0, 1, 2, 3]);
         const choices = order.map(i => q.choices[i]);
         const correctIndex = order.indexOf(q.correctIndex);
-        return { question: q.question, choices, correctIndex, explain: q.explain };
+        return { question: q.question, choices, correctIndex, explain: q.explain, nguon: q.nguon || '' };
     });
     return { noiDungChung: nhom.noiDungChung || null, cauHoi };
 }
@@ -187,6 +187,18 @@ function xaoTronDapAnNhom(nhom) {
 // đánh số bắt đầu từ 61 để khớp với đề gốc, tiện cho việc sau này ghép thêm
 // các phần/môn khác (mỗi phần giữ đúng dải số thứ tự thật của nó).
 function batDauLamBai(chuyenDeTen, groups, enableTimer, soPhut, soCauBatDau) {
+    // Dọn dẹp đồng hồ đếm giờ CŨ (nếu có) trước khi bắt đầu đề MỚI. Bug thực
+    // tế đã gặp: nếu học sinh tạo đề A có bật đếm giờ, KHÔNG nộp bài (và chưa
+    // hết giờ), rồi bấm "Tạo đề luyện tập" một đề B khác — biến `currentExam`
+    // bị GÁN LẠI thành object mới, nhưng setInterval của đề A vẫn chạy ngầm
+    // (closure bên trong đọc biến `currentExam` theo tham chiếu hiện tại, chứ
+    // không phải giá trị tại lúc tạo). Khi đồng hồ CŨ đó chạm 0, nó gọi
+    // submitExam() trên đề B — khiến đề B tự động "nộp bài" và hiện lời giải
+    // NGAY LẬP TỨC dù học sinh chưa kịp làm câu nào. Phải clearInterval của
+    // đề CŨ trước khi tạo đề MỚI để không còn interval nào chạy ngầm nữa.
+    if (currentExam && currentExam.timer) {
+        clearInterval(currentExam.timer);
+    }
     currentExam = {
         chuyenDeTen,
         groups,
@@ -307,7 +319,12 @@ function renderExam() {
             const explainDiv = document.createElement('div');
             explainDiv.className = 'explain-box';
             explainDiv.id = 'explain-' + globalNo;
-            explainDiv.innerHTML = `<b>Lời giải:</b><br>${q.explain || '(chưa có lời giải)'}`;
+            // Nguồn đề (nếu trích được từ file gốc) hiển thị NGAY DƯỚI lời
+            // giải, không hiện ở phần đề bài — chỉ để tham khảo, không làm
+            // rối phần câu hỏi/đáp án. Chỉ hiện khi có (nhiều câu không có
+            // thông tin nguồn trong file gốc thì để trống, không tự bịa).
+            const nguonHtml = q.nguon ? `<div class="nguon-cau">Nguồn: ${q.nguon}</div>` : '';
+            explainDiv.innerHTML = `<b>Lời giải:</b><br>${q.explain || '(chưa có lời giải)'}${nguonHtml}`;
             qDiv.appendChild(explainDiv);
 
             qDiv.dataset.correct = q.correctIndex;
